@@ -127,3 +127,21 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Catkin
+build/
+devel/
+
+# ROS
+.idea/
+.catkin_workspace/
+
+# models
+*.prototxt
+*.caffemodel
+
+# stats
+*.csv
+*.stats.json
+*.manifest.json
+*.zip
