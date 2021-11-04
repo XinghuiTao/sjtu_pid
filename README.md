@@ -1,2 +1,1 @@
-# sjtu_pid
-PID optimisation with Genetic Algorithm &amp; Reinforcement Learning
+# SJTU drone PID optimisation with Genetic Algorithm &amp; Reinforcement Learning
