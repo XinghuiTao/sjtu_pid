@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="world_name" value="$(find drone_pid)/worlds/standing_person.world"/>
+        <arg name="use_sim_time" value="true"/>
+        <arg name="verbose" value="true"/>
+    </include>
+
+    <param name="robot_description" textfile="$(find sjtu_drone)/models/sjtu_drone/sjtu_drone.urdf" />
+    <node name="spawn_model" pkg="sjtu_drone" type="spawn_model" respawn="false" />
+</launch>

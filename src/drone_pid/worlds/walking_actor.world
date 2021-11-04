@@ -1,0 +1,50 @@
+<?xml version="1.0" ?>
+<sdf version="1.4">
+  <world name="default">
+    <include>
+      <uri>model://ground_plane</uri>
+    </include>
+    <include>
+      <uri>model://sun</uri>
+    </include>
+    <actor name="actor_walk">
+      <skin>
+        <filename>moonwalk.dae</filename>
+        <scale>1.0</scale>
+      </skin>
+      <pose>5 0 0 0 0</pose>
+      <animation name="walking">
+        <filename>walk.dae</filename>
+        <scale>1.0</scale>
+        <interpolate_x>true</interpolate_x>
+      </animation>
+      <script>
+        <loop>true</loop>
+        <delay_start>0</delay_start>
+        <auto_start>true</auto_start>
+        <trajectory id="0" type="walking">
+          <waypoint>
+            <time>0</time>
+            <pose>5 3 0 0 0 -1.57</pose>
+          </waypoint>
+          <waypoint>
+            <time>6</time>
+            <pose>5 -3 0 0 0 -1.57</pose>
+          </waypoint>
+          <waypoint>
+            <time>8</time>
+            <pose>5 -3 0 0 0 1.57</pose>
+          </waypoint>
+          <waypoint>
+            <time>14</time>
+            <pose>5 3 0 0 0 1.57</pose>
+          </waypoint>
+          <waypoint>
+            <time>16</time>
+            <pose>5 3 0 0 0 -1.57</pose>
+          </waypoint>
+        </trajectory>
+      </script>
+    </actor>
+  </world>
+</sdf>
