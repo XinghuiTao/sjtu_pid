@@ -1,1 +1,1 @@
-# SJTU drone PID optimisation with Genetic Algorithm &amp; Reinforcement Learning
+# SJTU drone PID optimisation with GA &amp; RL
