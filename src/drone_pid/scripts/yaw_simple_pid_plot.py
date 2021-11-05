@@ -26,11 +26,13 @@ from helpers.control import Control
 control = Control()
 hz = 10
 
-from helpers.pid import PID
-pid = PID()
+from simple_pid import PID
 fpv = [320, 480]
-pid_params = [0.4, 0.05, 0.5]
+pid = PID(0.5, 0.2, 0.4, setpoint=fpv[0])
+pid.sample_time = 1/hz
 
+from helpers.plot import Plot
+plot = Plot()
 
 class Yaw(object):
     def __init__(self):
@@ -61,16 +63,17 @@ class Yaw(object):
                     self.pub_cmd_vel.publish(self.move_msg)
                 else:
                     cent = centroids[0]
-                    pid_x = pid.update(pid_params, fpv[0], cent[0])
-                    self.yaw_angle_pid = degrees(atan(pid_x/(fpv[1]-cent[1])))
+                    pid_x = pid(cent[0])
 
+                    self.yaw_angle_pid = degrees(atan(pid_x/(fpv[1]-cent[1])))
                     self.move_msg.angular.z = radians(self.yaw_angle_pid)*hz
                     self.pub_cmd_vel.publish(self.move_msg)
 
-                    cv2.circle(frame, (320, cent[1]), 3, [0,0,255], -1, cv2.LINE_AA)
-                    cv2.circle(frame, (cent[0], cent[1]), 3, [0,255,0], -1, cv2.LINE_AA)
+                    # live plotting
+                    angle_diff = degrees(atan((fpv[0]-cent[0])/(fpv[1]-cent[1])))
+                    live_plot = plot.update(angle_diff)
 
-                cv2.imshow("", frame)
+                cv2.imshow("", live_plot)
                 cv2.waitKey(1)
 
             self.rate.sleep()
@@ -102,10 +105,3 @@ if __name__ == '__main__':
 # The proportional term (Kp*proportional_error): helps us to reduce the rise time. 
 # The integral term(Ki*integral_error): helps us to reduce any steady-state error.
 # The derivative term(Kd*derivative_error): helps us to prevents any overshoot.
-
-# GA
-# 1. Create an Initial population
-# 2. Defining a fitness function
-# 3. Selection
-# 4. Crossover
-# 5. Mutation
