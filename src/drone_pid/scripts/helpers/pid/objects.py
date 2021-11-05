@@ -8,12 +8,14 @@ class PID:
 
     def update(self, pid_params, current_val, target_val):
         error = current_val - target_val
+        
         interval = 1/self.ros_rate
-        self.prev_error = error
+        
+        P = error
+        self.I = self.I + error*interval
+        D = (error-self.prev_error)/interval
+        PID = pid_params[0]*P + pid_params[1]*self.I + pid_params[2]*D
 
-        P = pid_params[0]*error
-        self.I = self.I + pid_params[1]*error*interval
-        D = pid_params[2]*(error-self.prev_error)/interval
-        PID = P + self.I + D
+        self.prev_error = error
 
         return float(PID)

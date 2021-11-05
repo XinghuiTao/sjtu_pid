@@ -26,11 +26,10 @@ from helpers.control import Control
 control = Control()
 hz = 10
 
-from helpers.pid import PID
-pid = PID()
+from simple_pid import PID
 fpv = [320, 480]
-pid_params = [0.4, 0.05, 0.5]
-
+pid = PID(0.5, 0.2, 0.4, setpoint=fpv[0])
+pid.sample_time = 1/hz
 
 class Yaw(object):
     def __init__(self):
@@ -61,9 +60,9 @@ class Yaw(object):
                     self.pub_cmd_vel.publish(self.move_msg)
                 else:
                     cent = centroids[0]
-                    pid_x = pid.update(pid_params, fpv[0], cent[0])
-                    self.yaw_angle_pid = degrees(atan(pid_x/(fpv[1]-cent[1])))
+                    pid_x = pid(cent[0])
 
+                    self.yaw_angle_pid = degrees(atan(pid_x/(fpv[1]-cent[1])))
                     self.move_msg.angular.z = radians(self.yaw_angle_pid)*hz
                     self.pub_cmd_vel.publish(self.move_msg)
 
