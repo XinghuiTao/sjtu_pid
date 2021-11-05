@@ -1,4 +1,4 @@
 #!/bin/bash
 
 source devel/setup.bash
-rosrun drone_pid yaw_simple_pid_plot.py
+rosrun drone_pid yaw_simple_pid_plot_baseline.py
