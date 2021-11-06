@@ -32,16 +32,12 @@ fpv = [320, 480]
 pid = PID(0.5, 0, 0.4, setpoint=fpv[0])
 pid.sample_time = 1/hz
 
-from deap import base, creator, tools
-ONE_MAX_LENGTH = 100
-POPULATION_SIZE = 200
-P_CROSSOVER = 0.9
-P_MUTATION = 0.1
-MAX_GENERATIONS = 50
+# from helpers.genetic import Simulation
+from helpers.genetic import ListTools
+# from helpers.genetic.config import config
 
-RANDOM_SEED = 42
-random.seed(RANDOM_SEED)
-
+# simulation = Simulation(config)
+# simulation.generate_initial_population()
 
 class Yaw(object):
     def __init__(self):
@@ -65,18 +61,18 @@ class Yaw(object):
             if self.frame is not None:
                 frame = deepcopy(self.frame)
 
-                centroids = detection.detect(frame)
-                if len(centroids)==0:
-                    # To-do: fill in gaps
-                    self.move_msg.angular.z = 0
-                    self.pub_cmd_vel.publish(self.move_msg)
-                else:
-                    cent = centroids[0]
-                    pid_x = pid(cent[0])
+                # centroids = detection.detect(frame)
+                # if len(centroids)==0:
+                #     # To-do: fill in gaps
+                #     self.move_msg.angular.z = 0
+                #     self.pub_cmd_vel.publish(self.move_msg)
+                # else:
+                #     cent = centroids[0]
+                #     pid_x = pid(cent[0])
 
-                    self.yaw_angle_pid = degrees(atan(pid_x/(fpv[1]-cent[1])))
-                    self.move_msg.angular.z = radians(self.yaw_angle_pid)*hz
-                    self.pub_cmd_vel.publish(self.move_msg)
+                #     self.yaw_angle_pid = degrees(atan(pid_x/(fpv[1]-cent[1])))
+                #     self.move_msg.angular.z = radians(self.yaw_angle_pid)*hz
+                #     self.pub_cmd_vel.publish(self.move_msg)
 
             self.rate.sleep()
     
