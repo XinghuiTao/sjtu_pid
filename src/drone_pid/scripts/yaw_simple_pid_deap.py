@@ -26,32 +26,54 @@ random.seed(RANDOM_SEED)
 
 from helpers.cvlib import Detection
 detection = Detection()
+fpv = [320, 480]
 
 from helpers.control import Control
 control = Control()
 hz = 10
 
 from simple_pid import PID
-fpv = [320, 480]
-pid = PID(0.5, 0, 0.4, setpoint=fpv[0])
+pid = PID(0.5, 0.5, 0.4, setpoint=fpv[0])
 pid.sample_time = 1/hz
 
-from deap import base, creator, tools, algorithms
-IND_SIZE=3
-POPULATION_SIZE = 100
-P_CROSSOVER = 0.9
-MAX_GENERATIONS = 50
+# from deap import base, creator, tools, algorithms
+# IND_SIZE=3
+# POPULATION_SIZE = 100
+# P_CROSSOVER = 0.9
+# P_MUTATION = 0.1
+# MAX_GENERATIONS = 50
 
-creator.create("FitnessSquare", base.Fitness, weights=(1.0,))
-creator.create("Individual", list, fitness=creator.FitnessSquare)
+# # population
+# creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+# creator.create("Individual", list, fitness=creator.FitnessMax)
 
-toolbox = base.Toolbox()
-toolbox.register("pid_float", random.random)
-toolbox.register("individualCreator", tools.initRepeat, creator.Individual, toolbox.pid_float, n=IND_SIZE)
-toolbox.register("populationCreator", tools.initRepeat, list, toolbox.individualCreator)
-population = toolbox.populationCreator(n=POPULATION_SIZE)
+# toolbox = base.Toolbox()
+# toolbox.register("pid_float", random.uniform, 0, 1)
+# toolbox.register("individualCreator", tools.initRepeat, creator.Individual, toolbox.pid_float, n=IND_SIZE)
+# toolbox.register("populationCreator", tools.initRepeat, list, toolbox.individualCreator)
+# population = toolbox.populationCreator(n=POPULATION_SIZE)
 
-print(population)
+# # fitness
+# def ISFitness(distance):
+#     return sum(distance),
+# toolbox.register("evaluate", ISFitness)
+
+# # evolving
+# toolbox.register("select", tools.selTournament, tournsize=3)
+# toolbox.register("mate", tools.cxOnePoint)
+# toolbox.register("mutate", tools.mutShuffleIndexes, indpb=1.0/IND_SIZE)
+
+# # stats
+# stats = tools.Statistics(lambda ind: ind.fitness.values)
+# stats.register("max", np.max)
+# stats.register("mean", np.mean)
+
+# population, logbook = algorithms.eaSimple(population, toolbox, cxpb=P_CROSSOVER, mutpb=P_MUTATION, ngen=MAX_GENERATIONS,
+#                                    stats=stats, verbose=True)
+# maxFitnessValues, meanFitnessValues = logbook.select("max", "mean")
+
+# print(population)
+
 
 class Yaw(object):
     def __init__(self):
