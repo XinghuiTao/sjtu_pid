@@ -15,10 +15,14 @@ import cv2
 from cvlib.object_detection import draw_bbox
 
 from math import degrees, radians, atan
+import array
 import numpy as np
-import random
 import statistics
 import time
+
+import random
+RANDOM_SEED = 42
+random.seed(RANDOM_SEED)
 
 from helpers.cvlib import Detection
 detection = Detection()
@@ -33,6 +37,21 @@ pid = PID(0.5, 0, 0.4, setpoint=fpv[0])
 pid.sample_time = 1/hz
 
 from deap import base, creator, tools, algorithms
+IND_SIZE=3
+POPULATION_SIZE = 100
+P_CROSSOVER = 0.9
+MAX_GENERATIONS = 50
+
+creator.create("FitnessSquare", base.Fitness, weights=(1.0,))
+creator.create("Individual", list, fitness=creator.FitnessSquare)
+
+toolbox = base.Toolbox()
+toolbox.register("pid_float", random.random)
+toolbox.register("individualCreator", tools.initRepeat, creator.Individual, toolbox.pid_float, n=IND_SIZE)
+toolbox.register("populationCreator", tools.initRepeat, list, toolbox.individualCreator)
+population = toolbox.populationCreator(n=POPULATION_SIZE)
+
+print(population)
 
 class Yaw(object):
     def __init__(self):
