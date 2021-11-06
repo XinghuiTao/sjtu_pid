@@ -28,7 +28,7 @@ hz = 10
 
 from simple_pid import PID
 fpv = [320, 480]
-pid = PID(0.5, 0.2, 0.4, setpoint=fpv[0])
+pid = PID(0.5, 0, 0.4, setpoint=fpv[0])
 pid.sample_time = 1/hz
 
 from helpers.plot import Plot
@@ -73,8 +73,8 @@ class Yaw(object):
                     angle_diff = degrees(atan((fpv[0]-cent[0])/(fpv[1]-cent[1])))
                     live_plot = plot.update(angle_diff)
 
-                cv2.imshow("", live_plot)
-                cv2.waitKey(1)
+                    cv2.imshow("", live_plot)
+                    cv2.waitKey(1)
 
             self.rate.sleep()
     

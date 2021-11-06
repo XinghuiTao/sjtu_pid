@@ -16,6 +16,7 @@ from cvlib.object_detection import draw_bbox
 
 from math import degrees, radians, atan
 import numpy as np
+import random
 import statistics
 import time
 
@@ -30,6 +31,17 @@ from simple_pid import PID
 fpv = [320, 480]
 pid = PID(0.5, 0, 0.4, setpoint=fpv[0])
 pid.sample_time = 1/hz
+
+from deap import base, creator, tools
+ONE_MAX_LENGTH = 100
+POPULATION_SIZE = 200
+P_CROSSOVER = 0.9
+P_MUTATION = 0.1
+MAX_GENERATIONS = 50
+
+RANDOM_SEED = 42
+random.seed(RANDOM_SEED)
+
 
 class Yaw(object):
     def __init__(self):
@@ -66,12 +78,6 @@ class Yaw(object):
                     self.move_msg.angular.z = radians(self.yaw_angle_pid)*hz
                     self.pub_cmd_vel.publish(self.move_msg)
 
-                    cv2.circle(frame, (320, cent[1]), 3, [0,0,255], -1, cv2.LINE_AA)
-                    cv2.circle(frame, (cent[0], cent[1]), 3, [0,255,0], -1, cv2.LINE_AA)
-
-                cv2.imshow("", frame)
-                cv2.waitKey(1)
-
             self.rate.sleep()
     
     def cam_callback(self,data):
@@ -101,3 +107,10 @@ if __name__ == '__main__':
 # The proportional term (Kp*proportional_error): helps us to reduce the rise time. 
 # The integral term(Ki*integral_error): helps us to reduce any steady-state error.
 # The derivative term(Kd*derivative_error): helps us to prevents any overshoot.
+
+# GA
+# 1.Create an Initial population
+# 2.Defining a fitness function
+# 3.Selection
+# 4.Crossover
+# 5.Mutation
