@@ -24,6 +24,9 @@ import random
 RANDOM_SEED = 42
 random.seed(RANDOM_SEED)
 
+from helpers.utils import GazeboConnection
+gazebo = GazeboConnection()
+
 from helpers.cvlib import Detection
 detection = Detection()
 fpv = [320, 480]
@@ -33,25 +36,22 @@ control = Control()
 hz = 10
 
 from simple_pid import PID
-pid = PID(0.5, 0.5, 0.4, setpoint=fpv[0])
-pid.sample_time = 1/hz
 
-# from deap import base, creator, tools, algorithms
-# IND_SIZE=3
-# POPULATION_SIZE = 100
-# P_CROSSOVER = 0.9
-# P_MUTATION = 0.1
-# MAX_GENERATIONS = 50
+from deap import base, creator, tools, algorithms
+IND_SIZE=3
+POPULATION_SIZE = 3
+P_CROSSOVER = 0.9
+P_MUTATION = 0.1
+MAX_GENERATIONS = 50
 
-# # population
-# creator.create("FitnessMax", base.Fitness, weights=(1.0,))
-# creator.create("Individual", list, fitness=creator.FitnessMax)
+# population
+creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+creator.create("Individual", list, fitness=creator.FitnessMax)
 
-# toolbox = base.Toolbox()
-# toolbox.register("pid_float", random.uniform, 0, 1)
-# toolbox.register("individualCreator", tools.initRepeat, creator.Individual, toolbox.pid_float, n=IND_SIZE)
-# toolbox.register("populationCreator", tools.initRepeat, list, toolbox.individualCreator)
-# population = toolbox.populationCreator(n=POPULATION_SIZE)
+toolbox = base.Toolbox()
+toolbox.register("pid_float", random.uniform, 0, 1)
+toolbox.register("individualCreator", tools.initRepeat, creator.Individual, toolbox.pid_float, n=IND_SIZE)
+toolbox.register("populationCreator", tools.initRepeat, list, toolbox.individualCreator)
 
 # # fitness
 # def ISFitness(distance):
@@ -89,12 +89,16 @@ class Yaw(object):
 
         self.yaw_angle_pid = 0
         self.frame_id = 0
+        self.yaw_logs = []
+
+        self.population = toolbox.populationCreator(n=POPULATION_SIZE)
+        self.population_index = 0
 
         control.takeoff()
         rospy.on_shutdown(self.shutdown)
 
         while not rospy.is_shutdown():
-            if self.frame is not None:
+            if self.frame is not None and self.population_index < POPULATION_SIZE:
                 frame = deepcopy(self.frame)
 
                 centroids = detection.detect(frame)
@@ -104,14 +108,33 @@ class Yaw(object):
                     self.pub_cmd_vel.publish(self.move_msg)
                 else:
                     cent = centroids[0]
+                    pid_list = self.population[self.population_index]
+                    pid = PID(pid_list[0], pid_list[1], pid_list[2], setpoint=fpv[0])
+                    pid.sample_time = 1/hz
+                    
                     pid_x = pid(cent[0])
-
                     self.yaw_angle_pid = degrees(atan(pid_x/(fpv[1]-cent[1])))
                     self.move_msg.angular.z = radians(self.yaw_angle_pid)*hz
                     self.pub_cmd_vel.publish(self.move_msg)
 
                     cv2.circle(frame, (320, cent[1]), 3, [0,0,255], -1, cv2.LINE_AA)
                     cv2.circle(frame, (cent[0], cent[1]), 3, [0,255,0], -1, cv2.LINE_AA)
+
+                log_length = 50
+                if self.frame_id < log_length:
+                    self.frame_id = self.frame_id + 1
+                    self.yaw_logs.append(self.yaw_angle_pid)
+                    
+                if self.frame_id == log_length:
+                    self.frame_id = 0
+                    self.population_index = self.population_index + 1
+
+                    print("PID STD Baseline")
+                    yaw_logs_preprocessing = np.trim_zeros(np.array(self.yaw_logs))
+                    std = statistics.stdev(yaw_logs_preprocessing)
+                    print(std)
+
+                    gazebo.resetSim()
 
                 cv2.imshow("", frame)
                 cv2.waitKey(1)
