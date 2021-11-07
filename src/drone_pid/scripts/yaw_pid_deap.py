@@ -90,54 +90,80 @@ class Yaw(object):
         self.yaw_angle_pid = 0
         self.frame_id = 0
         self.yaw_logs = []
-
+        
         self.population = toolbox.populationCreator(n=POPULATION_SIZE)
         self.population_index = 0
+        self.fitnessValues = []
+        self.offspring = []
 
+        gazebo.resetSim()
         control.takeoff()
         rospy.on_shutdown(self.shutdown)
 
         while not rospy.is_shutdown():
-            if self.frame is not None and self.population_index < POPULATION_SIZE:
-                frame = deepcopy(self.frame)
+            if self.frame is not None:
+                if self.population_index < POPULATION_SIZE:
+                    frame = deepcopy(self.frame)
 
-                centroids = detection.detect(frame)
-                if len(centroids)==0:
-                    # To-do: fill in gaps
-                    self.move_msg.angular.z = 0
-                    self.pub_cmd_vel.publish(self.move_msg)
+                    centroids = detection.detect(frame)
+                    if len(centroids)==0:
+                        # To-do: fill in gaps
+                        self.move_msg.angular.z = 0
+                        self.pub_cmd_vel.publish(self.move_msg)
+                    else:
+                        cent = centroids[0]
+                        pid_list = self.population[self.population_index]
+                        pid = PID(pid_list[0], pid_list[1], pid_list[2], setpoint=fpv[0])
+                        pid.sample_time = 1/hz
+                        
+                        pid_x = pid(cent[0])
+                        self.yaw_angle_pid = degrees(atan(pid_x/(fpv[1]-cent[1])))
+                        self.move_msg.angular.z = radians(self.yaw_angle_pid)*hz
+                        self.pub_cmd_vel.publish(self.move_msg)
+
+                    log_length = 10
+                    if self.frame_id < log_length:
+                        self.yaw_logs.append(self.yaw_angle_pid)
+                        self.frame_id = self.frame_id + 1
+                        
+                    if self.frame_id == log_length:
+                        print("PID STD Baseline")
+                        yaw_logs_preprocessing = np.trim_zeros(np.array(self.yaw_logs))
+                        std = statistics.stdev(yaw_logs_preprocessing)
+                        # print(std, self.population[self.population_index])
+                        # std_tuple = (std,)
+                        self.fitnessValues.append(std)
+
+                        self.frame_id = 0
+                        self.population_index = self.population_index + 1
+
+                        gazebo.resetSim()
                 else:
-                    cent = centroids[0]
-                    pid_list = self.population[self.population_index]
-                    pid = PID(pid_list[0], pid_list[1], pid_list[2], setpoint=fpv[0])
-                    pid.sample_time = 1/hz
+                    print(self.fitnessValues)
+                    toolbox.register("select", tools.selTournament, tournsize=3)
+                    toolbox.register("mate", tools.cxOnePoint)
+                    toolbox.register("mutate", tools.mutShuffleIndexes, indpb=1.0/IND_SIZE)
+                    self.offspring = toolbox.select(self.population, len(self.population))
+                    self.offspring = list(map(toolbox.clone, self.offspring))
+                    print(self.population)
+                    print(self.offspring)
+
+                    for child1, child2 in zip(self.offspring[::2], self.offspring[1::2]):
+                        if random.random() < P_CROSSOVER:
+                            toolbox.mate(child1, child2)
+                            del child1.fitness.values
+                            del child2.fitness.values
+
+                    for mutant in self.offspring:
+                        if random.random() < P_MUTATION:
+                            toolbox.mutate(mutant)
+                            del mutant.fitness.values
+                
+                    self.population = self.offspring
+                    self.population_index = 0
+                    self.fitnessValues = []
+                    self.offspring = []
                     
-                    pid_x = pid(cent[0])
-                    self.yaw_angle_pid = degrees(atan(pid_x/(fpv[1]-cent[1])))
-                    self.move_msg.angular.z = radians(self.yaw_angle_pid)*hz
-                    self.pub_cmd_vel.publish(self.move_msg)
-
-                    cv2.circle(frame, (320, cent[1]), 3, [0,0,255], -1, cv2.LINE_AA)
-                    cv2.circle(frame, (cent[0], cent[1]), 3, [0,255,0], -1, cv2.LINE_AA)
-
-                log_length = 50
-                if self.frame_id < log_length:
-                    self.frame_id = self.frame_id + 1
-                    self.yaw_logs.append(self.yaw_angle_pid)
-                    
-                if self.frame_id == log_length:
-                    self.frame_id = 0
-                    self.population_index = self.population_index + 1
-
-                    print("PID STD Baseline")
-                    yaw_logs_preprocessing = np.trim_zeros(np.array(self.yaw_logs))
-                    std = statistics.stdev(yaw_logs_preprocessing)
-                    print(std)
-
-                    gazebo.resetSim()
-
-                cv2.imshow("", frame)
-                cv2.waitKey(1)
 
             self.rate.sleep()
     
@@ -147,6 +173,10 @@ class Yaw(object):
         except CvBridgeError as e:
             print(e)
         self.frame = cv_img
+    
+    def pid_fitness(self, Individual):
+        
+        return 1/std
     
     def shutdown(self):
         control.land()
