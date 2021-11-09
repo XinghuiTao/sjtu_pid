@@ -79,7 +79,6 @@ class Yaw(object):
         self.population = toolbox.populationCreator(n=POPULATION_SIZE)
         self.population_id = 0
         self.fitnessValues = []
-        self.offspring = []
         self.maxFitness = 0
         self.meanFitness = 0
         self.maxFitnessValues = []
@@ -110,7 +109,7 @@ class Yaw(object):
                         self.move_msg.angular.z = radians(self.yaw_angle_pid)*hz
                         self.pub_cmd_vel.publish(self.move_msg)
                         self.yaw_logs.append(self.yaw_angle_pid)
-                    # frame counter
+
                     self.frame_id = self.frame_id + 1                   
                 else:
                     yaw_logs_preprocessing = np.trim_zeros(np.array(self.yaw_logs))
@@ -125,28 +124,16 @@ class Yaw(object):
                     self.meanFitness = sum(self.fitnessValues) / len(self.population)
                     print("- Generation {}: Max Fitness = {}, Avg Fitness = {}".format(self.generation_id, self.maxFitness, self.meanFitness))
                     
-                    
-                    self.offspring = toolbox.select(self.population, len(self.population))
-                    self.offspring = list(map(toolbox.clone, self.offspring))
+                    offspring = self.generate_offspring(self.population)
 
-                    for child1, child2 in zip(self.offspring[::2], self.offspring[1::2]):
-                        if random.random() < P_CROSSOVER:
-                            toolbox.mate(child1, child2)
-                    
-                    for mutant in self.offspring:
-                        if random.random() < P_MUTATION:
-                            toolbox.mutate(mutant)
-                            del mutant.fitness.values
-
-                    self.generation_id = self.generation_id + 1
-                    self.population = self.offspring
+                    self.population = offspring
                     self.population_id = 0
+                    self.generation_id = self.generation_id + 1
                     self.fitnessValues = []
-                    self.offspring = []
                     self.maxFitness = 0
                     self.meanFitness = 0
+                    gazebo.resetSim()
                     
-
             self.rate.sleep()
     
     def cam_callback(self, data):
@@ -159,8 +146,24 @@ class Yaw(object):
     def init_population(self, population_id):
         pid_params = self.population[population_id]
         pid = PID(pid_params[0], pid_params[1], pid_params[2], setpoint=fpv[0])
-        pid.sample_time = 1/hz                       
+        pid.sample_time = 1/hz
+
         return pid
+
+    def generate_offspring(self, population):
+        offspring = toolbox.select(population, len(population))
+        offspring = list(map(toolbox.clone, offspring))
+
+        for child1, child2 in zip(offspring[::2], offspring[1::2]):
+            if random.random() < P_CROSSOVER:
+                toolbox.mate(child1, child2)
+        
+        for mutant in offspring:
+            if random.random() < P_MUTATION:
+                toolbox.mutate(mutant)
+                del mutant.fitness.values
+
+        return offspring
                         
     
     def shutdown(self):
