@@ -90,11 +90,13 @@ class Yaw(object):
         rospy.on_shutdown(self.shutdown)
 
         while not rospy.is_shutdown():
-            if self.frame is not None:
-                if self.population_id < POPULATION_SIZE:
-                    frame = deepcopy(self.frame)
+            if self.frame is None:
+                continue
+            if self.population_id < POPULATION_SIZE:
+                frame = deepcopy(self.frame)
+                centroids = detection.detect(frame)               
 
-                    centroids = detection.detect(frame)
+                if self.frame_id < EVALUATION_LENGTH:
                     if len(centroids)==0:
                         # To-do: fill in gaps
                         self.move_msg.angular.z = 0
@@ -103,27 +105,25 @@ class Yaw(object):
                         cent = centroids[0]
                         pid_list = self.population[self.population_id]
                         pid = PID(pid_list[0], pid_list[1], pid_list[2], setpoint=fpv[0])
-                        pid.sample_time = 1/hz
-                        
+                        pid.sample_time = 1/hz                       
                         pid_x = pid(cent[0])
+                        
                         self.yaw_angle_pid = degrees(atan(pid_x/(fpv[1]-cent[1])))
                         self.move_msg.angular.z = radians(self.yaw_angle_pid)*hz
                         self.pub_cmd_vel.publish(self.move_msg)
-
-                    if self.frame_id < EVALUATION_LENGTH:
                         self.yaw_logs.append(self.yaw_angle_pid)
-                        self.frame_id = self.frame_id + 1
-                        
-                    if self.frame_id == EVALUATION_LENGTH:
-                        yaw_logs_preprocessing = np.trim_zeros(np.array(self.yaw_logs))
-                        std = statistics.stdev(yaw_logs_preprocessing)
-                        self.fitnessValues.append(std)
 
-                        self.frame_id = 0
-                        self.population_id = self.population_id + 1
-
-                        gazebo.resetSim()
+                        self.frame_id = self.frame_id + 1                   
                 else:
+                    # yaw_logs_preprocessing = np.trim_zeros(np.array(self.yaw_logs))
+                    std = statistics.stdev(self.yaw_logs)
+                    self.fitnessValues.append(std)
+
+                    self.frame_id = 0
+                    self.population_id = self.population_id + 1
+
+                    gazebo.resetSim()
+            else:
                     self.maxFitness = max(self.fitnessValues)
                     self.meanFitness = sum(self.fitnessValues) / len(self.population)
                     print("- Generation {}: Max Fitness = {}, Avg Fitness = {}".format(self.generation_id, self.maxFitness, self.meanFitness))
