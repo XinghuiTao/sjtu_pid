@@ -39,8 +39,8 @@ from simple_pid import PID
 
 from deap import base, creator, tools, algorithms
 IND_SIZE=3
-POPULATION_SIZE = 5
-EVALUATION_LENGTH = 20
+POPULATION_SIZE = 3
+EVALUATION_LENGTH = 10
 MAX_GENERATIONS = 50
 P_CROSSOVER = 0.9
 P_MUTATION = 0.1
@@ -158,10 +158,6 @@ class Yaw(object):
         except CvBridgeError as e:
             print(e)
         self.frame = cv_img
-    
-    def pid_fitness(self, Individual):
-        
-        return 1/std
     
     def shutdown(self):
         control.land()
