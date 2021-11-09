@@ -39,13 +39,14 @@ from simple_pid import PID
 
 from deap import base, creator, tools, algorithms
 IND_SIZE=3
-POPULATION_SIZE = 3
+POPULATION_SIZE = 5
+EVALUATION_LENGTH = 20
+MAX_GENERATIONS = 50
 P_CROSSOVER = 0.9
 P_MUTATION = 0.1
-MAX_GENERATIONS = 50
 
 # population
-creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+creator.create("FitnessMax", base.Fitness, weights=(-1.0,))
 creator.create("Individual", list, fitness=creator.FitnessMax)
 
 toolbox = base.Toolbox()
@@ -53,26 +54,9 @@ toolbox.register("pid_float", random.uniform, 0, 1)
 toolbox.register("individualCreator", tools.initRepeat, creator.Individual, toolbox.pid_float, n=IND_SIZE)
 toolbox.register("populationCreator", tools.initRepeat, list, toolbox.individualCreator)
 
-# # fitness
-# def ISFitness(distance):
-#     return sum(distance),
-# toolbox.register("evaluate", ISFitness)
-
-# # evolving
-# toolbox.register("select", tools.selTournament, tournsize=3)
-# toolbox.register("mate", tools.cxOnePoint)
-# toolbox.register("mutate", tools.mutShuffleIndexes, indpb=1.0/IND_SIZE)
-
-# # stats
-# stats = tools.Statistics(lambda ind: ind.fitness.values)
-# stats.register("max", np.max)
-# stats.register("mean", np.mean)
-
-# population, logbook = algorithms.eaSimple(population, toolbox, cxpb=P_CROSSOVER, mutpb=P_MUTATION, ngen=MAX_GENERATIONS,
-#                                    stats=stats, verbose=True)
-# maxFitnessValues, meanFitnessValues = logbook.select("max", "mean")
-
-# print(population)
+toolbox.register("select", tools.selTournament, tournsize=2)
+toolbox.register("mate", tools.cxOnePoint)
+toolbox.register("mutate", tools.mutShuffleIndexes, indpb=1.0/IND_SIZE)
 
 
 class Yaw(object):
@@ -91,10 +75,15 @@ class Yaw(object):
         self.frame_id = 0
         self.yaw_logs = []
         
+        self.generation_id = 0
         self.population = toolbox.populationCreator(n=POPULATION_SIZE)
-        self.population_index = 0
+        self.population_id = 0
         self.fitnessValues = []
         self.offspring = []
+        self.maxFitness = 0
+        self.meanFitness = 0
+        self.maxFitnessValues = []
+        self.meanFitnessValues = []
 
         gazebo.resetSim()
         control.takeoff()
@@ -102,7 +91,7 @@ class Yaw(object):
 
         while not rospy.is_shutdown():
             if self.frame is not None:
-                if self.population_index < POPULATION_SIZE:
+                if self.population_id < POPULATION_SIZE:
                     frame = deepcopy(self.frame)
 
                     centroids = detection.detect(frame)
@@ -112,7 +101,7 @@ class Yaw(object):
                         self.pub_cmd_vel.publish(self.move_msg)
                     else:
                         cent = centroids[0]
-                        pid_list = self.population[self.population_index]
+                        pid_list = self.population[self.population_id]
                         pid = PID(pid_list[0], pid_list[1], pid_list[2], setpoint=fpv[0])
                         pid.sample_time = 1/hz
                         
@@ -121,48 +110,44 @@ class Yaw(object):
                         self.move_msg.angular.z = radians(self.yaw_angle_pid)*hz
                         self.pub_cmd_vel.publish(self.move_msg)
 
-                    log_length = 10
-                    if self.frame_id < log_length:
+                    if self.frame_id < EVALUATION_LENGTH:
                         self.yaw_logs.append(self.yaw_angle_pid)
                         self.frame_id = self.frame_id + 1
                         
-                    if self.frame_id == log_length:
-                        print("PID STD Baseline")
+                    if self.frame_id == EVALUATION_LENGTH:
                         yaw_logs_preprocessing = np.trim_zeros(np.array(self.yaw_logs))
                         std = statistics.stdev(yaw_logs_preprocessing)
-                        # print(std, self.population[self.population_index])
-                        # std_tuple = (std,)
                         self.fitnessValues.append(std)
 
                         self.frame_id = 0
-                        self.population_index = self.population_index + 1
+                        self.population_id = self.population_id + 1
 
                         gazebo.resetSim()
                 else:
-                    print(self.fitnessValues)
-                    toolbox.register("select", tools.selTournament, tournsize=3)
-                    toolbox.register("mate", tools.cxOnePoint)
-                    toolbox.register("mutate", tools.mutShuffleIndexes, indpb=1.0/IND_SIZE)
+                    self.maxFitness = max(self.fitnessValues)
+                    self.meanFitness = sum(self.fitnessValues) / len(self.population)
+                    print("- Generation {}: Max Fitness = {}, Avg Fitness = {}".format(self.generation_id, self.maxFitness, self.meanFitness))
+                    
+                    
                     self.offspring = toolbox.select(self.population, len(self.population))
                     self.offspring = list(map(toolbox.clone, self.offspring))
-                    print(self.population)
-                    print(self.offspring)
 
                     for child1, child2 in zip(self.offspring[::2], self.offspring[1::2]):
                         if random.random() < P_CROSSOVER:
                             toolbox.mate(child1, child2)
-                            del child1.fitness.values
-                            del child2.fitness.values
-
+                    
                     for mutant in self.offspring:
                         if random.random() < P_MUTATION:
                             toolbox.mutate(mutant)
                             del mutant.fitness.values
-                
+
+                    self.generation_id = self.generation_id + 1
                     self.population = self.offspring
-                    self.population_index = 0
+                    self.population_id = 0
                     self.fitnessValues = []
                     self.offspring = []
+                    self.maxFitness = 0
+                    self.meanFitness = 0
                     
 
             self.rate.sleep()
