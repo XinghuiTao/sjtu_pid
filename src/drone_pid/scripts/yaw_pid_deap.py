@@ -103,25 +103,22 @@ class Yaw(object):
                         self.pub_cmd_vel.publish(self.move_msg)
                     else:
                         cent = centroids[0]
-                        pid_list = self.population[self.population_id]
-                        pid = PID(pid_list[0], pid_list[1], pid_list[2], setpoint=fpv[0])
-                        pid.sample_time = 1/hz                       
+                        pid = self.init_population(self.population_id)                    
                         pid_x = pid(cent[0])
-                        
+
                         self.yaw_angle_pid = degrees(atan(pid_x/(fpv[1]-cent[1])))
                         self.move_msg.angular.z = radians(self.yaw_angle_pid)*hz
                         self.pub_cmd_vel.publish(self.move_msg)
                         self.yaw_logs.append(self.yaw_angle_pid)
-
-                        self.frame_id = self.frame_id + 1                   
+                    # frame counter
+                    self.frame_id = self.frame_id + 1                   
                 else:
-                    # yaw_logs_preprocessing = np.trim_zeros(np.array(self.yaw_logs))
-                    std = statistics.stdev(self.yaw_logs)
+                    yaw_logs_preprocessing = np.trim_zeros(np.array(self.yaw_logs))
+                    std = statistics.stdev(yaw_logs_preprocessing)
                     self.fitnessValues.append(std)
-
+                    # reset
                     self.frame_id = 0
                     self.population_id = self.population_id + 1
-
                     gazebo.resetSim()
             else:
                     self.maxFitness = max(self.fitnessValues)
@@ -152,12 +149,19 @@ class Yaw(object):
 
             self.rate.sleep()
     
-    def cam_callback(self,data):
+    def cam_callback(self, data):
         try:
             cv_img = self.bridge_object.imgmsg_to_cv2(data, desired_encoding="bgr8")
         except CvBridgeError as e:
             print(e)
         self.frame = cv_img
+    
+    def init_population(self, population_id):
+        pid_params = self.population[population_id]
+        pid = PID(pid_params[0], pid_params[1], pid_params[2], setpoint=fpv[0])
+        pid.sample_time = 1/hz                       
+        return pid
+                        
     
     def shutdown(self):
         control.land()
