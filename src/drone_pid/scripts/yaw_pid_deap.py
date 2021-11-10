@@ -98,16 +98,15 @@ class Yaw(object):
                 if self.frame_id < EVALUATION_LENGTH:
                     if len(centroids)==0:
                         # To-do: fill in gaps
-                        self.move_msg.angular.z = 0
-                        self.pub_cmd_vel.publish(self.move_msg)
+                        self.yaw_command(0)
                     else:
                         cent = centroids[0]
                         pid = self.init_population(self.population_id)                    
                         pid_x = pid(cent[0])
 
                         self.yaw_angle_pid = degrees(atan(pid_x/(fpv[1]-cent[1])))
-                        self.move_msg.angular.z = radians(self.yaw_angle_pid)*hz
-                        self.pub_cmd_vel.publish(self.move_msg)
+                        self.yaw_command(radians(self.yaw_angle_pid)*hz)
+
                         self.yaw_logs.append(self.yaw_angle_pid)
 
                     self.frame_id = self.frame_id + 1                   
@@ -115,25 +114,20 @@ class Yaw(object):
                     yaw_logs_preprocessing = np.trim_zeros(np.array(self.yaw_logs))
                     std = statistics.stdev(yaw_logs_preprocessing)
                     self.fitnessValues.append(std)
+
                     # evaluatioin reset
-                    self.frame_id = 0
-                    self.population_id = self.population_id + 1
-                    gazebo.resetSim()
+                    self.reset_evaluation()                  
             else:
                     self.maxFitness = max(self.fitnessValues)
                     self.meanFitness = sum(self.fitnessValues) / len(self.population)
                     print("- Generation {}: Max Fitness = {}, Avg Fitness = {}".format(self.generation_id, self.maxFitness, self.meanFitness))
                     
                     offspring = self.generate_offspring(self.population)
+                    self.population = offspring
 
                     # population reset
-                    self.population = offspring
-                    self.population_id = 0
-                    self.generation_id = self.generation_id + 1
-                    self.fitnessValues = []
-                    self.maxFitness = 0
-                    self.meanFitness = 0
-                    gazebo.resetSim()
+                    self.reset_population()
+                    
                     
             self.rate.sleep()
     
@@ -143,6 +137,10 @@ class Yaw(object):
         except CvBridgeError as e:
             print(e)
         self.frame = cv_img
+
+    def yaw_command(self, radians):
+        self.move_msg.angular.z = radians
+        self.pub_cmd_vel.publish(self.move_msg)
     
     def init_population(self, population_id):
         pid_params = self.population[population_id]
@@ -165,8 +163,20 @@ class Yaw(object):
                 del mutant.fitness.values
 
         return offspring
-                        
     
+    def reset_evaluation(self):
+        self.frame_id = 0
+        self.population_id = self.population_id + 1
+        gazebo.resetSim()
+
+    def reset_population(self):
+        self.population_id = 0
+        self.generation_id = self.generation_id + 1
+        self.fitnessValues = []
+        self.maxFitness = 0
+        self.meanFitness = 0
+        gazebo.resetSim()
+                        
     def shutdown(self):
         control.land()
         
