@@ -115,7 +115,7 @@ class Yaw(object):
                     yaw_logs_preprocessing = np.trim_zeros(np.array(self.yaw_logs))
                     std = statistics.stdev(yaw_logs_preprocessing)
                     self.fitnessValues.append(std)
-                    # reset
+                    # evaluatioin reset
                     self.frame_id = 0
                     self.population_id = self.population_id + 1
                     gazebo.resetSim()
@@ -126,6 +126,7 @@ class Yaw(object):
                     
                     offspring = self.generate_offspring(self.population)
 
+                    # population reset
                     self.population = offspring
                     self.population_id = 0
                     self.generation_id = self.generation_id + 1
